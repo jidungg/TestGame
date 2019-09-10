@@ -6,9 +6,13 @@ TagManager:
   tags:
   - TargetPointer
   - MainGround
+  - MasterTargetPoint0
+  - MasterTargetPoint1
+  - GenPosition0
+  - GenPosition1
+  - EnemyBase
   - AllyUnit
-  - AllyBuilding
-  - MasterTargetPointer
+  - EnemyUnit
   layers:
   - Default
   - TransparentFX

@@ -1,15 +1,20 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using SandWarGameServer;
 
 public class UnitGenerator : MonoBehaviour
 {
-    [SerializeField] private GameObject unitPrefap;
+    List<Unit> units = new List<Unit>();
+    [SerializeField] List<GameObject> unitPrefpas;
     [SerializeField] Building generationBuilding;
     [SerializeField] int pullingAmount;
+    [SerializeField] int maxUnitNum;
+    [SerializeField] float genTerm;
+    [SerializeField] public Transform genPoint;
 
-    // Start is called before the first frame update
-    private void Awake()
+
+    public void Initiallize(float genTerm,Vector3 genPos)
     {
         if (generationBuilding.Equals(null))
         {
@@ -19,94 +24,69 @@ public class UnitGenerator : MonoBehaviour
         {
             pullingAmount = 10;
         }
-    }
-    void Start()
-    {
-        Debug.Log("unitGenrator start");
-        StartCoroutine(StartGenerating());
-    }
-    private void OnLevelWasLoaded(int level)
-    {
-        Debug.Log("Level" + level);
-    }
-    // Update is called once per frame
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            Instantiate(unitPrefap, this.transform.position+new Vector3(0,0,1), Quaternion.identity);
-        }
+        this.genTerm = genTerm;
+        genPoint.position = genPos;
     }
 
-    IEnumerator StartGenerating()
+    public void StartGenerate()
     {
-        Debug.Log("startgenerating coroutine");
+        Debug.Log("start generate");
+        StartCoroutine(GenerateCoroutine());
+    }
+    bool CheckGenCondition()
+    {
+        if (!generationBuilding.nowWorking)
+        {
+            return false;
+        }
+        if(units.Count >= maxUnitNum)
+        {
+            return false;
+        }
+        return true;
+    }
+    IEnumerator GenerateCoroutine()
+    {
         while (true)
         {
-            if(generationBuilding.NumEnabledUnits() < generationBuilding.maxIncludedUnit)
+            if(CheckGenCondition())
             {
-                GenerateUnit();
+                CBattleRoom.instance.UnitGenRequest(unitPrefpas[generationBuilding.level].GetComponent<Unit>().type, generationBuilding.buildingindex);
             }
 
-            yield return new WaitForSeconds(1);
+            yield return new WaitForSeconds(genTerm);
         }
 
     }
 
-    void GenerateUnit()
+    public void GenerateUnit(UnitType unit)
     {
-        Debug.Log("generate unit");
-        if ((generationBuilding.NumAllUnits() <= 0) || (generationBuilding.NumEnabledUnits() >= generationBuilding.NumAllUnits()))
-        {
-            PullingNew(pullingAmount);
-            EnableAUnitInPull();
-            return;
-
-        }
-        if (generationBuilding.NumAllUnits() >= 0 && generationBuilding.NumEnabledUnits() < generationBuilding.NumAllUnits())
-        {
-            EnableAUnitInPull();
-
-
-            return;
-        }
-
-    }
-    void EnableAUnitInPull()
-    {
-        Debug.Log("enableAunitInPull");
-        Debug.Log(generationBuilding.EnableAUnit()) ;
-        Debug.Log("numallunits:" + generationBuilding.NumAllUnits() + " numenalbledunits:" + generationBuilding.NumEnabledUnits());
+        GameObject obj = Instantiate(unitPrefpas[generationBuilding.level], this.transform.position + new Vector3(0, 0, 1), Quaternion.identity);
+        Unit newUnit = obj.GetComponent<Unit>();
+        units.Add(newUnit);
+        newUnit.Initiallize(generationBuilding.playerIndex,(byte)(units.Count-1),newUnit.type, genPoint, generationBuilding.targetPoint);
+        newUnit.ResetUnit();
+        obj.transform.parent = this.transform;
+        newUnit.AfterBirth();
     }
 
-    void PullingNew(int num)
+    
+    public void MoveUnits()
     {
-        Debug.Log("PullingNew");
-        if (generationBuilding.NumAllUnits() >= generationBuilding.maxIncludedUnit)
+        for (int i = 0; i < units.Count; i++)
         {
-            return;
+            units[i].StartMoving();
         }
-        Transform parent = generationBuilding.transform;
-        for (int i = 0; i < num; i++)
-        {
-            Debug.Log("PullingNew routine " + i);
-            GameObject obj = Instantiate(unitPrefap, this.transform.position + new Vector3(0, 0, 1), Quaternion.identity);
-            Unit unit = obj.GetComponent<Unit>();
-            generationBuilding.AddUnitInList(obj);
-            unit.genPoint = generationBuilding.genPoint;
-            unit.targetPoint = generationBuilding.targetPoint;
-            obj.transform.position = generationBuilding.genPoint.position;
-            obj.SetActive(false);
-            obj.transform.parent =parent;
-            if (generationBuilding.gameObject.CompareTag("AllyBuilding"))
-            {
-                obj.tag = "AllyUnit";
-            }
-            else
-            {
-                obj.tag = "EnemyUnit";
-            }
-            Debug.Log("obj id: "+obj.GetInstanceID());
-        }
+    }
+
+    public void MoveTargetPoint(Vector3 point)
+    {
+        generationBuilding.targetPoint.position = point;
+        MoveUnits();
+    }
+
+    public void ChangeUnitPrefap()
+    {
+
     }
 }
