@@ -11,8 +11,8 @@ TagManager:
   - GenPosition0
   - GenPosition1
   - EnemyBase
-  - AllyUnit
-  - EnemyUnit
+  - Ally
+  - Enemy
   layers:
   - Default
   - TransparentFX

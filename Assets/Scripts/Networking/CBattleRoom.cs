@@ -8,20 +8,21 @@ using System;
 
 public class CBattleRoom : MonoBehaviour
 {
-    public static CBattleRoom instance;
-    public CamMoving camMove;
-    public GameUIControl gameUI;
     public enum GAME_STATE
     {
         //게임방에 입장후 로딩 완료되서 서버의 응답을 기다리는 상태.
         READY = 0,
 
         //초기건설단계
-        INITIAL_BUILD=1,
+        INITIAL_BUILD = 1,
 
         //초기건설 끝.
         INITIAL_BUILD_END,
     }
+
+    public static CBattleRoom instance;
+    public CamMoving camMove;
+    public GameUIControl gameUI;
 
     // 서버에서 지정해준 본인의 플레이어 인덱스.
     public byte playerMeIndex;
@@ -50,11 +51,17 @@ public class CBattleRoom : MonoBehaviour
     MAPS map;
     //각 플레이어의 초기자금
     int initGold;
-
+    //현재 소환된 유닛의 갯수
+    short numUnits;
+    //모든 건물들 리스트
+    Dictionary<short, Building> buildings;
+    //모든 유닛 리스트
+    Dictionary<short, Unit> units;
 
 
     private void Awake()
     {
+        Debug.Log("CBattleRoom Awake");
         if (instance == null)
         {
             instance = this;
@@ -67,23 +74,36 @@ public class CBattleRoom : MonoBehaviour
 
         this.gameMain = GameObject.Find("GameMain").GetComponent<GameMain>();
         this.networkManager = GameObject.Find("NetworkManager").GetComponent<CNetworkManager>();
+        this.buildManager = GameObject.Find("BuildManager").GetComponent<BuildManager>();
 
     }
-    public void LoadBattle(byte playerIndex,MAPS map,int initGold)
+    private void Reset()
     {
+        foreach(var obj in buildings)
+        {
+        }
+    }
+
+    public void LoadBattle(byte playerIndex,MAPS map,int initGold, Deck opponentDeck)
+    {
+        Debug.Log("CBattleRoom LoadBattle");
+        buildManager.gameObject.SetActive(true);
         playerMeIndex = playerIndex;
         this.map = map;
         this.initGold = initGold;
         this.networkManager.messageReceiver = this;
-
+        DeckManager.instance.opponentDeck = opponentDeck;
         CPacket msg = CPacket.create((short)PROTOCOL.LOADING_COMPLETED);
         this.networkManager.send(msg);
 
         this.gameState = GAME_STATE.READY;
 
+
     }
+
     void GameStart(CPacket msg)
     {
+        Debug.Log("CBattleRoom GameStart");
         this.players = new List<Player>();
         byte playercount = msg.pop_byte();
         for (byte i = 0; i < playercount; ++i)
@@ -94,13 +114,20 @@ public class CBattleRoom : MonoBehaviour
             player.initialize(player_index);
             this.players.Add(player);
         }
+        //초기골드 획득
         GainGold(initGold);
-        buildManager = GameObject.Find("BuildManager").GetComponent<BuildManager>();
-        buildManager.Initialize();
+        //턴 시작
+        StartCoroutine(CommandsManager.instance.TurnsCoroutine());
+
+    
+        //건설 시작.
         BuildStart();
+        //초기 건설시간 카운트.
         StartCoroutine(InitialBuildCountDown(10));
 
+
     }
+
     public void OnRecv(CPacket msg)
     {
         // 제일 먼저 프로토콜 아이디를 꺼내온다.  
@@ -116,68 +143,35 @@ public class CBattleRoom : MonoBehaviour
             case PROTOCOL.ROOM_REMOVED:
                 BackToMain();
                 break;
-
-            case PROTOCOL.BUILD_SUCCESS:
-                byte build_Playerindex = msg.pop_byte();
-                BuildingType build_Type = (BuildingType)msg.pop_byte();
-                short build_Index = msg.pop_int16();
-                Card card = new Card(build_Type);
-                buildManager.Build(build_Playerindex, card, build_Index);
-                break;
-
-            case PROTOCOL.BUILD_FAILED:
-                gameUI.Announce("Build Failed");
-                break;
-
-            case PROTOCOL.BATTLE_START:
-                gameState = GAME_STATE.INITIAL_BUILD_END;
-                for (int i = 0; i < players.Count; i++)
-                {
-                    players[i].BattleStart();
-                }
-                break;
-
-            case PROTOCOL.UNIT_SUMMON_SUCCESS:
-                byte unit_Playerindex = msg.pop_byte();
-                UnitType unit_Type = (UnitType)msg.pop_byte();
-                short unit_Index = msg.pop_int16();
-                players[unit_Playerindex].SummonUnit(unit_Type,unit_Index);
-                break;
         }
     }
 
 
-    IEnumerator InitialBuildCountDown(int seconds)
-    {
-        gameState = GAME_STATE.INITIAL_BUILD;
-        for (int i = seconds; i > 0; i--)
-        {
-            gameUI.Announce("Battle starts in " + i + " seconds");
-            yield return new WaitForSeconds(1);
-        }
-        CPacket msg = CPacket.create((short)PROTOCOL.INITIALBUILD_COMPLETED);
-        this.networkManager.send(msg);
 
-        StartCoroutine(gameUI.AnnounceCoroutine("BattleStart"));
-
-    }
-
-    public void BuildStart()
+    public void BackToMain()
     {
-        camMove.MoveCamToBase(playerMeIndex);
-        StartCoroutine(buildManager.BuldingCoroutine());
-    }
-    public void BuildEnd()
-    {
-        StopCoroutine(buildManager.BuldingCoroutine());
-    }
-    void BackToMain()
-    {
+        Debug.Log("BackToMain");
         this.gameMain.gameObject.SetActive(true);
         this.gameMain.Enter();
-        SceneManager.LoadScene("Lobby");
+        buildManager.Reset();
+        SceneManager.LoadScene("Lobby",LoadSceneMode.Single);
         gameObject.SetActive(false);
     }
+    public void BuildFail()
+    {
+        gameUI.Announce("Build Failed");
+    }
+    public void BattleStart()
+    {
+        gameState = GAME_STATE.INITIAL_BUILD_END;
+        for (int i = 0; i < players.Count; i++)
+        {
+            players[i].BattleStart();
+        }
+    }
+
+
+
     public byte GetEnemyIndex()
     {
         if(playerMeIndex == 0)
@@ -189,7 +183,6 @@ public class CBattleRoom : MonoBehaviour
             return 0;
         }
     }
-
     public bool CheckBuildAreaEmpty(byte playerIndex,short areaIndex)
     {
         if (players[playerIndex].buildings.ContainsKey(areaIndex))
@@ -201,8 +194,6 @@ public class CBattleRoom : MonoBehaviour
             return true;
         }
     }
-
-
     public int GetNowGold()
     {
         return players[playerMeIndex].Gold;
@@ -223,19 +214,37 @@ public class CBattleRoom : MonoBehaviour
  
     public void BuildRequest(Card card,short locationIndex)
     {
+        ulong turn = CommandsManager.instance.nowTurn;
         CPacket msg = CPacket.create((short)PROTOCOL.BUILD_REQUEST);
+        msg.push(CommandsManager.instance.nowTurn);
         msg.push((short)card.CardType);
         msg.push(locationIndex);
+
         this.networkManager.send(msg);
+        Debug.Log("BuildRequested in turn " + turn+ " /type: "+ (short)card.CardType);
     }
 
-    public void UnitGenRequest(UnitType type,short summoningBuildingIndex)
+
+    IEnumerator InitialBuildCountDown(int seconds)
     {
-        Debug.Log("unitgenRequest " + type + summoningBuildingIndex);
-        CPacket msg = CPacket.create((short)PROTOCOL.UNIT_SUMMON_REQEST);
-        msg.push((short)type);
-        msg.push(summoningBuildingIndex);
-        this.networkManager.send(msg);
-    }
+        gameState = GAME_STATE.INITIAL_BUILD;
+        for (int i = seconds; i > 0; i--)
+        {
+            gameUI.Announce("Battle starts in " + i + " seconds");
+            yield return new WaitForSeconds(1);
+        }
 
+        BattleStart();
+        StartCoroutine(gameUI.AnnounceCoroutine("BattleStart"));
+
+    }
+    public void BuildStart()
+    {
+        camMove.MoveCamToBase(playerMeIndex);
+        StartCoroutine(buildManager.BuldingCoroutine());
+    }
+    public void BuildEnd()
+    {
+        StopCoroutine(buildManager.BuldingCoroutine());
+    }
 }

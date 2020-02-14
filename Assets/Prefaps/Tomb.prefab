@@ -66,6 +66,7 @@ MeshRenderer:
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
   m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
   m_PreserveUVs: 0
   m_IgnoreNormalsForChartDetection: 0
   m_ImportantGI: 0
@@ -156,6 +157,7 @@ MeshRenderer:
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
   m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
   m_PreserveUVs: 0
   m_IgnoreNormalsForChartDetection: 0
   m_ImportantGI: 0
@@ -217,6 +219,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c576a4ac075bcac4fa34f75e8c8bff43, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playerIndex: 0
   buildingindex: 0
   targetPoint: {fileID: 3758378546757390541}
   nowWorking: 0
@@ -237,11 +240,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   unitPrefpas:
   - {fileID: 3381237920750116580, guid: 20977346e5e0f2e40984a35a4b379736, type: 3}
-  - {fileID: 3381237920750116580, guid: 20977346e5e0f2e40984a35a4b379736, type: 3}
-  - {fileID: 3381237920750116580, guid: 20977346e5e0f2e40984a35a4b379736, type: 3}
   generationBuilding: {fileID: 8641527314548492431}
-  pullingAmount: 10
-  maxUnitNum: 5
+  maxUnitCount: 5
   genTerm: 3
   genPoint: {fileID: 1929065345873186672}
 --- !u!1 &6210576846110416568
@@ -370,6 +370,7 @@ MeshRenderer:
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
   m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
   m_PreserveUVs: 0
   m_IgnoreNormalsForChartDetection: 0
   m_ImportantGI: 0

@@ -51,37 +51,25 @@ namespace SandWarGameServer
         //건설 실패
         BUILD_FAILED = 8,
 
-        //초기 건설시간 끝
-        INITIALBUILD_COMPLETED = 9,
 
-        //전투시작(유닛생산)
-        BATTLE_START = 10,
-
-        //유닛 소환 요청함
-        UNIT_SUMMON_REQEST = 11,
-
-        //유닛 소환 성공
-        UNIT_SUMMON_SUCCESS = 12,
-
-        //유닛 소환 실패
-        UNIT_SUMMON_FAILED,
 
         END
     }
 
-    public enum MAPS : byte
+
+    public enum MAPS : short
     {
         DESERT
     }
-    public enum BuildingType : byte
+    public enum BuildingType : short
     {
         NONE = 0,
 
         TOMB_STONE = 1,
     }
-    public enum UnitType : byte
+    public enum UnitType : short
     {
-        ZOMBIE =0,
+        ZOMBIE = 0,
     }
 
 }
